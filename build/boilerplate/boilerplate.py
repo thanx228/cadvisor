@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("filenames", help="list of files to check, all files if unspecified", nargs='*')
 args = parser.parse_args()
 
-rootdir = os.path.dirname(__file__) + "/../../"
+rootdir = f"{os.path.dirname(__file__)}/../../"
 rootdir = os.path.abspath(rootdir)
 
 def get_refs():
@@ -36,9 +36,8 @@ def get_refs():
     for path in glob.glob(os.path.join(rootdir, "build/boilerplate/boilerplate.*.txt")):
         extension = os.path.basename(path).split(".")[1]
 
-        ref_file = open(path, 'r')
-        ref = ref_file.read().splitlines()
-        ref_file.close()
+        with open(path, 'r') as ref_file:
+            ref = ref_file.read().splitlines()
         refs[extension] = ref
 
     return refs
@@ -87,21 +86,18 @@ def file_passes(filename, refs, regexs):
             break
 
     # if we don't match the reference at this point, fail
-    if ref != data:
-        return False
-
-    return True
+    return ref == data
 
 def file_extension(filename):
     return os.path.splitext(filename)[1].split(".")[-1].lower()
 
 skipped_dirs = ['Godeps', 'vendor', 'third_party', '_gopath', '_output', '.git']
 def normalize_files(files):
-    newfiles = []
-    for pathname in files:
-        if any(x in pathname for x in skipped_dirs):
-            continue
-        newfiles.append(pathname)
+    newfiles = [
+        pathname
+        for pathname in files
+        if all(x not in pathname for x in skipped_dirs)
+    ]
     for i, pathname in enumerate(newfiles):
         if not os.path.isabs(pathname):
             newfiles[i] = os.path.join(rootdir, pathname)
@@ -134,9 +130,7 @@ def get_files(extensions):
     return outfiles
 
 def get_regexs():
-    regexs = {}
-    # Search for "YEAR" which exists in the boilerplate, but shouldn't in the real thing
-    regexs["year"] = re.compile( 'YEAR' )
+    regexs = {"year": re.compile('YEAR')}
     # dates can be something in the 21st century
     regexs["date"] = re.compile( '20[0-9][0-9]' )
     # strip // +build \n\n build and //go:build constraints
